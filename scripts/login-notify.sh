@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # chmod +x /root/noty/scripts/login-notify.sh
-# add to /etc/pam.d/sshd
-# session optional pam_exec.so seteuid /root/noty/scripts/login-notify.sh
+# add next line to /etc/pam.d/sshd
+# session optional pam_exec.so seteuid /root/noty/scripts/login-notify.sh your_addr your_agentid your_username
 
 addr=$1
 agentid=$2
