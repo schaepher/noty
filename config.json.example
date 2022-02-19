@@ -1,0 +1,13 @@
+{
+    "addr": "127.0.0.1:55556",
+    "corp_id": "",
+    "agents": [
+        {
+            "id": 1000002,
+            "secret": "",
+            "token": "",
+            "encoding_aes_key": "",
+            "type": "echo"
+        }
+    ]
+}
