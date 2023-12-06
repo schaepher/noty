@@ -14,21 +14,20 @@ type Agent interface {
 	SendTextMessage(msg Message) (err error)
 }
 
-type AgentFactory struct{}
-
-func (f AgentFactory) Create(corpID string, client *QiyeWechatClient, config AgentConfig) Agent {
-	switch config.Type {
-	case "echo":
-		return NewEchoAgent(corpID, client, config)
-	default:
-		return NewEchoAgent(corpID, client, config)
-	}
+type CommonAgent struct {
+	corpID  string
+	client  *QiyeWechatClient
+	config  AgentConfig
+	handler func(msg MsgContent) error
 }
 
-type CommonAgent struct {
-	corpID string
-	client *QiyeWechatClient
-	config AgentConfig
+func NewComonAgent(corpID string, client *QiyeWechatClient, config AgentConfig, handler func(msg MsgContent) error) *CommonAgent {
+	return &CommonAgent{
+		corpID:  corpID,
+		client:  client,
+		config:  config,
+		handler: handler,
+	}
 }
 
 func (app *CommonAgent) VerifyURL(msgSignature, timestamp, nonce, echostr string) ([]byte, error) {
@@ -55,4 +54,15 @@ func (app *CommonAgent) DecryptMsg(msgSignature, timestamp, nonce string, jsonBo
 	}
 
 	return
+}
+
+func (app *CommonAgent) HandleMsg(msg MsgContent) (err error) {
+	return app.handler(msg)
+}
+
+func (app *CommonAgent) SendTextMessage(msg Message) (err error) {
+	msg.Agentid = app.config.ID
+	msg.Msgtype = msg.Text.Type()
+
+	return app.client.SendMessage(msg)
 }

@@ -1,4 +1,4 @@
-package qiyewechat
+package agents
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
+	"noty/channels/qiyewechat"
 	"os"
 	"path"
 	"strings"
@@ -22,27 +23,27 @@ type PDFConvertConfig struct {
 }
 
 type PDFHandler struct {
-	app *EchoAgent
+	app qiyewechat.Agent
 	cfg PDFConvertConfig
 }
 
-func NewPDFHandler(app *EchoAgent, cfg PDFConvertConfig) *PDFHandler {
+func NewPDFHandler(app qiyewechat.Agent, cfg PDFConvertConfig) *PDFHandler {
 	return &PDFHandler{
 		app: app,
 		cfg: cfg,
 	}
 }
 
-func (h *PDFHandler) Handle(msg MsgContent) error {
+func (h *PDFHandler) Handle(msg qiyewechat.MsgContent) error {
 	startTime := time.Now()
 
 	cmd := strings.SplitN(msg.Content, " ", 2)
 
 	go func() {
 		time.Sleep(2 * time.Second)
-		h.app.SendTextMessage(Message{
+		h.app.SendTextMessage(qiyewechat.Message{
 			Touser: msg.FromUsername,
-			Text: &TextMessage{
+			Text: &qiyewechat.TextMessage{
 				Content: "creating pdf: " + cmd[1],
 			},
 		})
@@ -81,9 +82,9 @@ func (h *PDFHandler) Handle(msg MsgContent) error {
 		return err
 	}
 
-	h.app.SendTextMessage(Message{
+	h.app.SendTextMessage(qiyewechat.Message{
 		Touser: msg.FromUsername,
-		Text: &TextMessage{
+		Text: &qiyewechat.TextMessage{
 			Content: fmt.Sprintf("pdf created\nfilename: %s\nsize: %0.2f MB\ncost time: %d seconds", path.Base(filename), float64(len(all))/MB, int(time.Since(startTime).Seconds())),
 		},
 	})

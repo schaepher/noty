@@ -1,8 +1,9 @@
-package qiyewechat
+package agents
 
 import (
 	"encoding/json"
 	"net/url"
+	"noty/channels/qiyewechat"
 	"strings"
 	"time"
 
@@ -10,19 +11,14 @@ import (
 )
 
 type EchoAgent struct {
-	common CommonAgent
+	*qiyewechat.CommonAgent
 }
 
-func NewEchoAgent(corpID string, client *QiyeWechatClient, config AgentConfig) Agent {
-	return &EchoAgent{common: CommonAgent{corpID: corpID, client: client, config: config}}
-}
+func NewEchoAgent(corpID string, client *qiyewechat.QiyeWechatClient, config qiyewechat.AgentConfig) qiyewechat.Agent {
+	agent := &EchoAgent{}
+	agent.CommonAgent = qiyewechat.NewComonAgent(corpID, client, config, agent.HandleMsg)
 
-func (app *EchoAgent) VerifyURL(msgSignature, timestamp, nonce, echostr string) ([]byte, error) {
-	return app.common.VerifyURL(msgSignature, timestamp, nonce, echostr)
-}
-
-func (app *EchoAgent) DecryptMsg(msgSignature, timestamp, nonce string, jsonBody []byte) (msgContent MsgContent, err error) {
-	return app.common.DecryptMsg(msgSignature, timestamp, nonce, jsonBody)
+	return agent
 }
 
 func getCommandName(s string) string {
@@ -30,10 +26,10 @@ func getCommandName(s string) string {
 	return cmd[0]
 }
 
-func (app *EchoAgent) HandleMsg(msg MsgContent) (err error) {
-	app.SendTextMessage(Message{
+func (app *EchoAgent) HandleMsg(msg qiyewechat.MsgContent) (err error) {
+	app.SendTextMessage(qiyewechat.Message{
 		Touser: msg.FromUsername,
-		Text: &TextMessage{
+		Text: &qiyewechat.TextMessage{
 			Content: "received at " + time.Now().Format("2006-01-02 15:04:05"),
 		},
 	})
@@ -59,7 +55,7 @@ func (app *EchoAgent) HandleMsg(msg MsgContent) (err error) {
 		switch cmd {
 		case "pdf":
 			cfg := PDFConvertConfig{
-				URL:      "",
+				URL:      "http://127.0.0.1:8088/convert/html2pdf",
 				Username: "",
 				Password: "",
 				PDFDir:   "",
@@ -67,9 +63,9 @@ func (app *EchoAgent) HandleMsg(msg MsgContent) (err error) {
 			NewPDFHandler(app, cfg).Handle(msg)
 		default:
 			a, _ := json.Marshal(msg)
-			app.SendTextMessage(Message{
+			app.SendTextMessage(qiyewechat.Message{
 				Touser: msg.FromUsername,
-				Text: &TextMessage{
+				Text: &qiyewechat.TextMessage{
 					Content: string(a),
 				},
 			})
@@ -77,10 +73,4 @@ func (app *EchoAgent) HandleMsg(msg MsgContent) (err error) {
 	}()
 
 	return nil
-}
-
-func (app *EchoAgent) SendTextMessage(msg Message) (err error) {
-	msg.Agentid = app.common.config.ID
-	msg.Msgtype = msg.Text.Type()
-	return app.common.client.SendMessage(msg)
 }

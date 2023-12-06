@@ -3,15 +3,12 @@ module noty
 go 1.21
 
 require (
+	github.com/flytam/filenamify v1.1.3
 	github.com/gin-gonic/gin v1.7.7
 	github.com/werbenhu/eventbus v1.0.8
 	go.uber.org/zap v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
-
-require github.com/flytam/filenamify v1.1.3
-
-require github.com/flytam/filenamify v1.1.3
 
 require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
