@@ -37,6 +37,8 @@ type MsgContent struct {
 	CreateTime   uint32 `json:"CreateTime" xml:"CreateTime"`
 	MsgType      string `json:"MsgType" xml:"MsgType"`
 	Content      string `json:"Content" xml:"Content"`
+	Title        string `json:"Title" xml:"Title"`
+	Url          string `json:"Url" xml:"Url"`
 	Msgid        uint64 `json:"MsgId" xml:"MsgId"`
 	Agentid      uint32 `json:"AgentId" xml:"AgentId"`
 }

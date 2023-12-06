@@ -9,6 +9,10 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
+require github.com/flytam/filenamify v1.1.3
+
+require github.com/flytam/filenamify v1.1.3
+
 require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.13.0 // indirect
