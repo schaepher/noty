@@ -42,6 +42,8 @@ github.com/werbenhu/eventbus v1.0.8 h1:aVZtZ3xrawJ++hB9lU2wkDya0UoN58gBGYHFyQujb
 github.com/werbenhu/eventbus v1.0.8/go.mod h1:uAFdff5aBgwKGNTJs1sPGb7N6Hd4rqWjWRE3JUAwV+A=
 github.com/workweixin/weworkapi_golang v0.0.0-20200831071321-c1fdfd3d6e7d h1:+921K6z7SqJAdFejpwVkp5ZsC1A7b2lQew8YLbLZ3DA=
 github.com/workweixin/weworkapi_golang v0.0.0-20200831071321-c1fdfd3d6e7d/go.mod h1:vYtneA/Rq6p38+4jx4iFMX8O8eQqsNiMpv0UvNgzaXk=
+go.uber.org/atomic v1.11.0 h1:ZvwS0R+56ePWxUNi+Atn9dWONBPp/AUETXlHW0DxSjE=
+go.uber.org/atomic v1.11.0/go.mod h1:LUxbIzbOniOlMKjJjyPfpl4v+PKK2cNJn91OQbhoJI0=
 go.uber.org/goleak v1.2.0 h1:xqgm/S+aQvhWFTtR0XK3Jvg7z8kGV8P4X14IzwN3Eqk=
 go.uber.org/goleak v1.2.0/go.mod h1:XJYK+MuIchqpmGmUSAzotztawfKvYLUIgg7guXrwVUo=
 go.uber.org/multierr v1.10.0 h1:S0h4aNzvfcFsC3dRF1jLoaov7oRaKqRGC/pUEJ2yvPQ=

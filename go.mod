@@ -6,6 +6,7 @@ require (
 	github.com/flytam/filenamify v1.1.3
 	github.com/gin-gonic/gin v1.7.7
 	github.com/werbenhu/eventbus v1.0.8
+	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )

@@ -1,7 +1,8 @@
 package channels
 
 type Message struct {
-	From  string
-	Title string
-	Body  string
+	From      string
+	Receivers []string
+	Title     string
+	Body      string
 }

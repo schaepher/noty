@@ -1,43 +1,43 @@
 package qiyewechat
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
-	"net/http"
+	"noty/eventbus"
 	"noty/log"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"go.uber.org/zap"
 )
 
 const qyAPIBaseUrl = "https://qyapi.weixin.qq.com/cgi-bin"
 
-// QiyeWechatClient 用于与企业微信 API 交互
-type QiyeWechatClient struct {
+// QiyeWechatAgent 用于与企业微信应用交互
+type QiyeWechatAgent struct {
 	ctx  context.Context
 	stop context.CancelFunc
 
-	baseUrl     string
-	corpID      string
-	agentSecret string
-	apiToken    Token
+	cfg AgentConfig
 
-	logger *zap.Logger
+	baseUrl     string
+	accessToken *atomic.Value
+	logger      *zap.Logger
 }
 
-func NewQiyeWechatClien(ctx context.Context, corpID string, agentSecret string) (*QiyeWechatClient, error) {
+func NewQiyeWechatAgent(ctx context.Context, cfg AgentConfig) (*QiyeWechatAgent, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
-	client := &QiyeWechatClient{
+	client := &QiyeWechatAgent{
 		ctx:         ctx,
 		stop:        cancel,
+		cfg:         cfg,
 		baseUrl:     qyAPIBaseUrl,
-		corpID:      corpID,
-		agentSecret: agentSecret,
 		logger:      log.GetLogger(),
+		accessToken: &atomic.Value{},
 	}
+
+	client.accessToken.Store(AccessToken{})
 
 	err := client.start()
 	if err != nil {
@@ -48,8 +48,8 @@ func NewQiyeWechatClien(ctx context.Context, corpID string, agentSecret string) 
 	return client, nil
 }
 
-func (c *QiyeWechatClient) start() error {
-	logger := c.logger.With(zap.String("_loc", "[QiyeWechatClient.start]"))
+func (c *QiyeWechatAgent) start() error {
+	logger := c.logger.With(zap.String("_loc", "[QiyeWechatAgent.start]"))
 
 	if err := c.refreshToken(); err != nil {
 		logger.Error("get first token", zap.Error(err))
@@ -72,93 +72,33 @@ func (c *QiyeWechatClient) start() error {
 		}
 	}()
 
+	eventbus.Subscribe(c.cfg.ToUserTopic, c.SendTextMessage)
+
 	return nil
 }
 
-func (c *QiyeWechatClient) refreshToken() (err error) {
-	logger := c.logger.With(zap.String("_loc", "[QiyeWechatClient.refreshToken]"))
+func (c *QiyeWechatAgent) refreshToken() (err error) {
+	logger := c.logger.With(zap.String("_loc", "[QiyeWechatAgent.refreshToken]"))
 
-	if c.apiToken.token == "" || c.apiToken.IsExpired() {
-		token, expireIn, err := c.GetToken(c.corpID, c.agentSecret)
+	accessToken := c.accessToken.Load().(AccessToken)
+
+	if accessToken.token == "" || accessToken.IsExpired() {
+		token, expireIn, err := c.getToken(c.cfg.CorpID, c.cfg.Secret)
 		if err != nil {
 			logger.Error("get token by API", zap.Error(err))
 			return err
 		}
-		c.apiToken.token = token
-		c.apiToken.expireAt = time.Now().Add(time.Duration(expireIn)*time.Second - time.Minute)
+
+		accessToken = AccessToken{
+			token:    token,
+			expireAt: time.Now().Add(time.Duration(expireIn)*time.Second - time.Minute),
+		}
+		c.accessToken.Store(accessToken)
 	}
 
 	return nil
 }
 
-func (c *QiyeWechatClient) Close() {
+func (c *QiyeWechatAgent) Close() {
 	c.stop()
-}
-
-type getTokenRequest struct {
-	CorpID     string `json:"corpid"`
-	CorpSecret string `json:"corpsecret"`
-}
-
-type getTokenResponse struct {
-	ErrCode     int    `json:"errcode"`
-	ErrMsg      string `json:"errmsg"`
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int64  `json:"expire_in"`
-}
-
-func (c *QiyeWechatClient) GetToken(corpID string, agentSecret string) (token string, expireIn int64, err error) {
-	req := getTokenRequest{corpID, agentSecret}
-	reqJ, _ := json.Marshal(req)
-	resp, err := http.Post(c.baseUrl+"/gettoken", "application/json", bytes.NewReader(reqJ))
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	var respData getTokenResponse
-	err = json.NewDecoder(resp.Body).Decode(&respData)
-	if err != nil {
-		return
-	}
-
-	if respData.ErrCode != 0 {
-		err = errors.New(respData.ErrMsg)
-		return
-	}
-
-	return respData.AccessToken, respData.ExpiresIn, nil
-}
-
-type SendMessageResponse struct {
-	Errcode      int64  `json:"errcode"`
-	Errmsg       string `json:"errmsg"`
-	Invaliduser  string `json:"invaliduser"`
-	Invalidparty string `json:"invalidparty"`
-	Invalidtag   string `json:"invalidtag"`
-	Msgid        string `json:"msgid"`
-	ResponseCode string `json:"response_code"`
-}
-
-func (c *QiyeWechatClient) SendMessage(msg Message) (err error) {
-	j, _ := json.Marshal(msg)
-	resp, err := http.Post(c.baseUrl+"/message/send?access_token="+c.apiToken.token,
-		"application/json", bytes.NewReader(j))
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	var r SendMessageResponse
-	err = json.NewDecoder(resp.Body).Decode(&r)
-	if err != nil {
-		return
-	}
-
-	if r.Errcode != 0 {
-		err = errors.New(r.Errmsg)
-		return
-	}
-
-	return
 }

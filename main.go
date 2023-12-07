@@ -6,9 +6,7 @@ import (
 	"flag"
 	"os"
 	"path"
-	"strconv"
 
-	"noty/agents"
 	"noty/channels/qiyewechat"
 	"noty/log"
 
@@ -67,21 +65,14 @@ func main() {
 	ctx := context.Background()
 	engin := gin.Default()
 
-	for _, agent := range config.Agents {
-		strID := strconv.FormatInt(agent.ID, 10)
-
-		client, err := qiyewechat.NewQiyeWechatClien(ctx, config.CorpID, agent.Secret)
+	agentsGroup := engin.Group("/qiyewechat/agents")
+	for _, agentCfg := range config.Agents {
+		client, err := qiyewechat.NewQiyeWechatAgent(ctx, agentCfg)
 		if err != nil {
 			logger.Error("create qiye wechat client", zap.Error(err))
 			panic(err)
 		}
-
-		echoAgent := agents.NewEchoAgent(config.CorpID, client, agent)
-		engin.GET("/qiye-wechat/agents/"+strID, qiyewechat.VerifingHandler(echoAgent))
-		engin.POST("/qiye-wechat/agents/"+strID, qiyewechat.MsgHandler(echoAgent))
-
-		// 需要在 Proxy 控制该接口的访问，避免被恶意访问。Nginx 配置参考 nginx 文件夹里的 noty.conf
-		engin.POST("/qiye-wechat/text-senders/"+strID, qiyewechat.TextHandler(echoAgent))
+		client.RegisterHTTP(agentsGroup)
 	}
 
 	if err = engin.Run(config.ServerAddr); err != nil {

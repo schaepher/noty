@@ -3,20 +3,61 @@ package qiyewechat
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
+	"fmt"
 	"log"
+	"noty/eventbus"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/workweixin/weworkapi_golang/json_callback/wxbizjsonmsgcrypt"
 )
 
-// VerifingHandler 用于企业微信 Agent 接收信息配置验证
-func VerifingHandler(app Agent) func(c *gin.Context) {
+func (c *QiyeWechatAgent) RegisterHTTP(r gin.IRouter) {
+	strID := strconv.FormatInt(c.cfg.ID, 10)
+	r.GET("/"+strID, verifingHandler(c))
+	r.POST("/"+strID, msgHandler(c))
+
+	// 需要在 Proxy 控制该接口的访问，避免被恶意访问。Nginx 配置参考 nginx 文件夹里的 noty.conf
+	r.POST(fmt.Sprintf("/%s/text-sender", strID), textHandler(c))
+}
+
+func (c *QiyeWechatAgent) verifyURL(msgSignature, timestamp, nonce, echostr string) ([]byte, error) {
+	wxcpt := wxbizjsonmsgcrypt.NewWXBizMsgCrypt(c.cfg.Token, c.cfg.EncodingAESKey, c.cfg.CorpID, wxbizjsonmsgcrypt.JsonType)
+	rs, err := wxcpt.VerifyURL(msgSignature, timestamp, nonce, echostr)
+	if err != nil {
+		return nil, errors.New(err.ErrMsg)
+	}
+
+	return rs, nil
+}
+
+func (c *QiyeWechatAgent) decryptMsg(msgSignature, timestamp, nonce string, jsonBody []byte) (msgContent MsgContent, err error) {
+	wxcpt := wxbizjsonmsgcrypt.NewWXBizMsgCrypt(c.cfg.Token, c.cfg.EncodingAESKey, c.cfg.CorpID, wxbizjsonmsgcrypt.JsonType)
+	msg, wxcpterr := wxcpt.DecryptMsg(msgSignature, timestamp, nonce, jsonBody)
+	if wxcpterr != nil {
+		err = errors.New("decrypting message: " + wxcpterr.ErrMsg)
+		return
+	}
+
+	if err = xml.Unmarshal(msg, &msgContent); err != nil {
+		err = errors.New("unmarshal decrypted messaage content: " + wxcpterr.ErrMsg)
+		return
+	}
+
+	return
+}
+
+// verifingHandler 用于企业微信 Agent 接收信息配置验证
+func verifingHandler(app *QiyeWechatAgent) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		msgSignature := c.Query("msg_signature")
 		timestamp := c.Query("timestamp")
 		nonce := c.Query("nonce")
 		echostr := c.Query("echostr")
 
-		echoStr, err := app.VerifyURL(msgSignature, timestamp, nonce, echostr)
+		echoStr, err := app.verifyURL(msgSignature, timestamp, nonce, echostr)
 		if err != nil {
 			log.Println("[ERROR] Verify: ", err)
 		}
@@ -50,8 +91,8 @@ type RawResponse struct {
 	MsgSignature string `json:"msgsignature" xml:"msgsignature"`
 }
 
-// MsgHandler 用于处理发送到 Agent 的消息
-func MsgHandler(app Agent) func(*gin.Context) {
+// msgHandler 用于处理发送到 Agent 的消息
+func msgHandler(app *QiyeWechatAgent) func(*gin.Context) {
 	return func(c *gin.Context) {
 		msgSignature := c.Query("msg_signature")
 		timestamp := c.Query("timestamp")
@@ -65,7 +106,7 @@ func MsgHandler(app Agent) func(*gin.Context) {
 		}
 		jsonBody, _ := json.Marshal(raw)
 
-		content, err := app.DecryptMsg(msgSignature, timestamp, nonce, jsonBody)
+		content, err := app.decryptMsg(msgSignature, timestamp, nonce, jsonBody)
 		if err != nil {
 			log.Println("[ERROR]", err)
 		}
@@ -83,8 +124,8 @@ type TextMessageRequest struct {
 	Content    string `json:"content"`
 }
 
-// TextHandler 用于直接发送消息
-func TextHandler(app Agent) func(*gin.Context) {
+// textHandler 用于直接发送消息
+func textHandler(app *QiyeWechatAgent) func(*gin.Context) {
 	return func(c *gin.Context) {
 		var msg TextMessageRequest
 		if err := json.NewDecoder(c.Request.Body).Decode(&msg); err != nil {
@@ -92,12 +133,14 @@ func TextHandler(app Agent) func(*gin.Context) {
 			return
 		}
 
-		err := app.SendTextMessage(Message{
+		toSend := Message{
 			Touser: msg.ToUsername,
 			Text: &TextMessage{
 				Content: msg.Content,
 			},
-		})
+		}
+
+		err := eventbus.Publish(app.cfg.ToUserTopic, toSend)
 		if err != nil {
 			log.Println("[ERROR]", err)
 			c.AbortWithError(500, err)
