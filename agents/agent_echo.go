@@ -16,7 +16,7 @@ type EchoAgent struct {
 
 func NewEchoAgent(corpID string, client *qiyewechat.QiyeWechatClient, config qiyewechat.AgentConfig) qiyewechat.Agent {
 	agent := &EchoAgent{}
-	agent.CommonAgent = qiyewechat.NewComonAgent(corpID, client, config, agent.HandleMsg)
+	agent.CommonAgent = qiyewechat.NewAgent(corpID, client, config, agent.HandleMsg)
 
 	return agent
 }

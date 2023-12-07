@@ -3,6 +3,8 @@ package qiyewechat
 import (
 	"encoding/xml"
 	"errors"
+	"noty/channels"
+	"noty/eventbus"
 
 	"github.com/workweixin/weworkapi_golang/json_callback/wxbizjsonmsgcrypt"
 )
@@ -21,13 +23,17 @@ type CommonAgent struct {
 	handler func(msg MsgContent) error
 }
 
-func NewComonAgent(corpID string, client *QiyeWechatClient, config AgentConfig, handler func(msg MsgContent) error) *CommonAgent {
-	return &CommonAgent{
+func NewAgent(corpID string, client *QiyeWechatClient, config AgentConfig, handler func(msg MsgContent) error) *CommonAgent {
+	agent := &CommonAgent{
 		corpID:  corpID,
 		client:  client,
 		config:  config,
 		handler: handler,
 	}
+
+	eventbus.Subscribe(config.ProducerTopic, agent.SendTextMessage)
+
+	return agent
 }
 
 func (app *CommonAgent) VerifyURL(msgSignature, timestamp, nonce, echostr string) ([]byte, error) {
@@ -65,4 +71,9 @@ func (app *CommonAgent) SendTextMessage(msg Message) (err error) {
 	msg.Msgtype = msg.Text.Type()
 
 	return app.client.SendMessage(msg)
+}
+
+func (app *CommonAgent) sendMsg(topic string, msg channels.Message) (err error) {
+	m := Message{}
+	app.SendTextMessage(msg)
 }
