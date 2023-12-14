@@ -4,6 +4,10 @@ go 1.17
 
 require github.com/gin-gonic/gin v1.7.7
 
+require github.com/flytam/filenamify v1.1.3
+
+require github.com/flytam/filenamify v1.1.3
+
 require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.13.0 // indirect
